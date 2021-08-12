@@ -44,20 +44,11 @@
 
   var module = angular.module("AxelSoft", []);
 
-  module.value("customSelectDefaults", {
-    displayText: "Select...",
-    emptyListText: "There are no items to display",
-    emptySearchResultText: 'No results match "$0"',
-    addText: "Add",
-    searchDelay: 300,
-  });
-
   module.directive("customSelect", [
     "$parse",
     "$compile",
     "$timeout",
     "$q",
-    "customSelectDefaults",
     function ($parse, $compile, $timeout, $q, baseOptions) {
       var CS_OPTIONS_REGEXP =
         /^\s*(.*?)(?:\s+as\s+(.*?))?\s+for\s+(?:([\$\w][\$\w\d]*))\s+in\s+([\s\S]+?)(?:\s+track\s+by\s+([\s\S]+?))?$/;
@@ -86,14 +77,13 @@
           elem.addClass("dropdown custom-select");
 
           // Ng-Options break down
-          var displayFn = $parse(match[2] || match[1]),
-            valueName = match[3],
-            valueFn = $parse(match[2] ? match[1] : valueName),
+          var displayFn = $parse("g"), //$parse(match[2] || match[1]),
+            optionValue = match[3],
+            valueFn = $parse("g"), //$parse(match[2] ? match[1] : optionValue),
             values = match[4],
             valuesFn = $parse(values),
             track = match[5],
-            trackByExpr = track ? " track by " + track : "",
-            dependsOn = attrs.csDependsOn;
+            trackByExpr = track ? " track by " + track : "";
 
           var options = getOptions(),
             timeoutHandle,
@@ -102,43 +92,41 @@
             matchMap = {};
 
           var itemTemplate =
-              elem.html().trim() || "{{" + (match[2] || match[1]) + "}}",
-            dropdownTemplate =
-              '<a class="dropdown-toggle" data-toggle="dropdown" href ng-class="{ disabled: disabled }">' +
-              "<span>{{displayText}}</span>" +
-              "<b></b>" +
-              "</a>" +
-              '<div class="dropdown-menu">' +
-              '<div stop-propagation="click" class="custom-select-search">' +
-              '<input class="' +
-              attrs.selectClass +
-              '" type="text" autocomplete="off" ng-model="searchTerm" />' +
-              "</div>" +
-              '<ul role="menu">' +
-              '<li role="presentation" ng-repeat="' +
-              valueName +
-              " in matches" +
-              trackByExpr +
-              '">' +
-              '<a role="menuitem" tabindex="-1" href ng-click="select(' +
-              valueName +
-              ')">' +
-              itemTemplate +
-              "</a>" +
-              "</li>" +
-              '<li ng-hide="matches.length" class="empty-result" stop-propagation="click">' +
-              '<em class="muted">' +
-              '<span ng-hide="searchTerm">{{emptyListText}}</span>' +
-              '<span class="word-break" ng-show="searchTerm">{{ format(emptySearchResultText, searchTerm) }}</span>' +
-              "</em>" +
-              "</li>" +
-              "</ul>" +
-              '<div class="custom-select-action">' +
-              (typeof options.onAdd === "function"
-                ? '<button type="button" class="btn btn-primary btn-block add-button" ng-click="add()">{{addText}}</button>'
-                : "") +
-              "</div>" +
-              "</div>";
+            elem.html().trim() || "{{" + (match[2] || match[1]) + ".label}}";
+          var dropdownTemplate = `
+        <a
+          class="dropdown-toggle"
+          data-toggle="dropdown"
+          ng-class="{ disabled: disabled }"
+        >
+          <span>{{displayText}}</span>
+          <b></b>
+        </a>
+        <div class="dropdown-menu">
+          <div stop-propagation="click" class="custom-select-search">
+            <input
+              class="${attrs.selectClass}"
+              type="text"
+              autocomplete="off"
+              ng-model="searchTerm"
+            />
+          </div>
+          <ul role="menu">
+            <li role="presentation" ng-repeat="${optionValue} in matches">
+              <a role="menuitem" tabindex="-1" href ng-click="select(${optionValue})">
+                ${itemTemplate}
+              </a>
+            </li>
+            <li ng-hide="matches.length" class="empty-result" stop-propagation="click">
+              <em class="muted">
+                <span ng-hide="searchTerm">{{emptyListText}}</span>
+                <span class="word-break" ng-show="searchTerm">
+                  {{ format(emptySearchResultText, searchTerm) }}
+                </span>
+              </em>
+            </li>
+          </ul>
+        </div>`.replace(/\>\s+\</g, "><");
 
           // Clear element contents
           elem.empty();
@@ -171,15 +159,6 @@
               getMatches("");
             }
           });
-
-          if (dependsOn) {
-            scope.$watch(dependsOn, function (newVal, oldVal) {
-              if (newVal !== oldVal) {
-                childScope.matches = [];
-                childScope.select(undefined);
-              }
-            });
-          }
 
           // Event handler for key press (when the user types a character while focus is on the anchor element)
           anchorElement.on("keypress", function (event) {
@@ -278,7 +257,7 @@
           var needsDisplayText;
           function setDisplayText() {
             var locals = {};
-            locals[valueName] = controller.$modelValue;
+            locals[optionValue] = controller.$modelValue;
             var text = displayFn(scope, locals);
 
             if (text === undefined) {
@@ -318,7 +297,7 @@
             var opts = ulElement.find("li > a");
             if (opts.length > 0) {
               var ngRepeatItem = opts.eq(0).scope();
-              var item = ngRepeatItem[valueName];
+              var item = ngRepeatItem[optionValue];
               childScope.$apply(function () {
                 childScope.select(item);
               });
@@ -336,19 +315,17 @@
                   matchMap = {};
                   childScope.matches.length = 0;
                   for (var i = 0; i < matches.length; i++) {
-                    locals[valueName] = matches[i];
+                    locals[optionValue] = matches[i];
                     var value = valueFn(scope, locals),
                       label = displayFn(scope, locals);
 
                     matchMap[hashKey(value)] = {
                       value: value,
-                      label: label /*,
-									model: matches[i]*/,
+                      label: label,
                     };
 
                     childScope.matches.push(matches[i]);
                   }
-                  //childScope.matches = matches;
                 }
 
                 if (needsDisplayText) setDisplayText();
@@ -365,15 +342,13 @@
           }
 
           function configChildScope() {
-            childScope.addText = options.addText;
             childScope.emptySearchResultText = options.emptySearchResultText;
             childScope.emptyListText = options.emptyListText;
 
             childScope.select = function (item) {
               var locals = {};
-              locals[valueName] = item;
+              locals[optionValue] = item;
               var value = valueFn(childScope, locals);
-              //setDisplayText(displayFn(scope, locals));
               childScope.displayText =
                 displayFn(childScope, locals) || options.displayText;
               controller.$setViewValue(value);
@@ -388,7 +363,7 @@
                 if (!item) return;
 
                 var locals = {};
-                locals[valueName] = item;
+                locals[optionValue] = item;
                 var value = valueFn(scope, locals),
                   label = displayFn(scope, locals);
 
@@ -433,15 +408,15 @@
     },
   ]);
 
-  module.directive("stopPropagation", function () {
-    return {
-      restrict: "A",
-      link: function (scope, elem, attrs, ctrl) {
-        var events = attrs["stopPropagation"];
-        elem.bind(events, function (event) {
-          event.stopPropagation();
-        });
-      },
-    };
-  });
+  //   module.directive("stopPropagation", function () {
+  //     return {
+  //       restrict: "A",
+  //       link: function (scope, elem, attrs, ctrl) {
+  //         var events = attrs["stopPropagation"];
+  //         elem.bind(events, function (event) {
+  //           event.stopPropagation();
+  //         });
+  //       },
+  //     };
+  //   });
 })(angular);
