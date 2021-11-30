@@ -50,8 +50,7 @@
     "$timeout",
     "$q",
     function ($parse, $compile, $timeout, $q, baseOptions) {
-      var CS_OPTIONS_REGEXP =
-        /^\s*(.*?)(?:\s+as\s+(.*?))?\s+for\s+(?:([\$\w][\$\w\d]*))\s+in\s+([\s\S]+?)(?:\s+track\s+by\s+([\s\S]+?))?$/;
+      var CS_OPTIONS_REGEXP = /^\s*(.*?)(?:\s+as\s+(.*?))?\s+for\s+(?:([\$\w][\$\w\d]*))\s+in\s+([\s\S]+?)(?:\s+track\s+by\s+([\s\S]+?))?$/;
 
       return {
         restrict: "A",
@@ -321,7 +320,7 @@
 
                     matchMap[hashKey(value)] = {
                       value: value,
-                      label: label,
+                      label: label
                     };
 
                     childScope.matches.push(matches[i]);
@@ -370,7 +369,7 @@
                 matchMap[hashKey(value)] = {
                   value: value,
                   label: label /*,
-									model: matches[i]*/,
+									model: matches[i]*/
                 };
 
                 childScope.matches.push(item);
@@ -403,9 +402,9 @@
 
             return objType + ":" + key;
           }
-        },
+        }
       };
-    },
+    }
   ]);
 
   //   module.directive("stopPropagation", function () {
